@@ -254,7 +254,17 @@ profileRouter.put('/step/:n', (req: Request, res: Response) => {
 
 // 5. GET /profile - Fetch complete profile
 profileRouter.get('/', (req: Request, res: Response) => {
-  const userId = req.user?.userId || 'usr_demo_1'
+  const userId = req.user?.userId
+  if (!userId) {
+    return res.json({
+      success: true,
+      authenticated: false,
+      user: null,
+      accessProfile: null,
+      skills: [],
+      goal: null,
+    })
+  }
 
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as any
   const access = db.prepare('SELECT * FROM access_profiles WHERE user_id = ?').get(userId) as any
@@ -263,7 +273,8 @@ profileRouter.get('/', (req: Request, res: Response) => {
 
   return res.json({
     success: true,
-    user: user || { id: userId, phone: '9876543210', name: 'New User', language: 'hi' },
+    authenticated: true,
+    user: user || null,
     accessProfile: access || {},
     skills: skills || [],
     goal: goal || { target_role: 'tailoring', goal_type: 'job' },

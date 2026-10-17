@@ -39,11 +39,11 @@ export default function Onboarding() {
         name: '',
         age_range: '26-35',
         gender: '',
-        village_town: 'Hadapsar',
-        district: 'Pune',
-        state: 'Maharashtra',
-        pincode: '411028',
-        nearest_city: 'Pune',
+        village_town: '',
+        district: '',
+        state: '',
+        pincode: '',
+        nearest_city: '',
       },
       accessProfile: {
         can_travel_km: 15,
@@ -114,11 +114,14 @@ export default function Onboarding() {
     }
   }, [formData, lang])
 
-  // Load existing profile from backend on mount if available
+  // Load existing profile from backend on mount if available (only if authenticated)
   useEffect(() => {
+    const token = localStorage.getItem('skillsetu-token')
+    if (!token) return
+
     apiGetProfile()
       .then((res) => {
-        if (res?.user?.name) {
+        if (res?.authenticated && res?.user?.name) {
           setFormData((prev) => ({
             ...prev,
             user: { ...prev.user, ...res.user },

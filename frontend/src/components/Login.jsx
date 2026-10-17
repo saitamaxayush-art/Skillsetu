@@ -137,17 +137,6 @@ export default function Login() {
               <button type="submit" className="action-btn-primary auth-submit-large" disabled={loading}>
                 {loading ? t('common.loading') : t('auth.sendOtp')} →
               </button>
-
-              <button
-                type="button"
-                className="btn-demo-quickfill"
-                onClick={() => {
-                  setPhone('9876543210')
-                  setTimeout(() => setStep('otp'), 150)
-                }}
-              >
-                <DashIcon name="lightning" size={14} /> Quick Fill Demo Phone (9876543210)
-              </button>
             </form>
           ) : (
             <form onSubmit={handleVerifyOtp} className="auth-form-card">

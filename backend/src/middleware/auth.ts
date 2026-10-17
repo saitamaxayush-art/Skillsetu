@@ -40,12 +40,14 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
     }
   }
 
-  // Support demo default user fallback if no token provided so all demo pages work out of the box
-  const demoUserId = (req.headers['x-user-id'] as string) || 'usr_sunita_01'
-  req.user = {
-    userId: demoUserId,
-    phone: '+919800041207',
-    role: demoUserId === 'usr_employer_01' ? 'employer' : 'candidate',
+  // Support explicit test user header if supplied (e.g. during automated tests)
+  const explicitUserId = req.headers['x-user-id'] as string
+  if (explicitUserId) {
+    req.user = {
+      userId: explicitUserId,
+      phone: '+919800041207',
+      role: explicitUserId === 'usr_employer_01' ? 'employer' : 'candidate',
+    }
   }
 
   next()

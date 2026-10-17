@@ -38,15 +38,9 @@ export default function MorphNav({ scrolled = false, hidden = false }) {
 
   const [currentUser, setCurrentUser] = useState(() => {
     try {
-      const stored = localStorage.getItem('skillsetu-user')
-      if (stored) return JSON.parse(stored)
       const token = localStorage.getItem('skillsetu-token')
-      const completed = localStorage.getItem('skillsetu-completed')
-      if (completed || token) {
-        const ob = localStorage.getItem('skillsetu-onboarding')
-        if (ob) return JSON.parse(ob).user || { name: 'Candidate' }
-        return { name: 'Candidate' }
-      }
+      const stored = localStorage.getItem('skillsetu-user')
+      if (token && stored) return JSON.parse(stored)
       return null
     } catch {
       return null
@@ -57,20 +51,10 @@ export default function MorphNav({ scrolled = false, hidden = false }) {
   useEffect(() => {
     const checkUser = () => {
       try {
-        const stored = localStorage.getItem('skillsetu-user')
-        if (stored) {
-          setCurrentUser(JSON.parse(stored))
-          return
-        }
         const token = localStorage.getItem('skillsetu-token')
-        const completed = localStorage.getItem('skillsetu-completed')
-        if (completed || token) {
-          const ob = localStorage.getItem('skillsetu-onboarding')
-          if (ob && JSON.parse(ob).user) {
-            setCurrentUser(JSON.parse(ob).user)
-            return
-          }
-          setCurrentUser({ name: 'Candidate' })
+        const stored = localStorage.getItem('skillsetu-user')
+        if (token && stored) {
+          setCurrentUser(JSON.parse(stored))
           return
         }
         setCurrentUser(null)
@@ -93,8 +77,10 @@ export default function MorphNav({ scrolled = false, hidden = false }) {
     localStorage.removeItem('skillsetu-token')
     localStorage.removeItem('skillsetu-user')
     localStorage.removeItem('skillsetu-completed')
+    localStorage.removeItem('skillsetu-onboarding')
     setCurrentUser(null)
     window.dispatchEvent(new Event('auth-change'))
+    window.location.href = '/'
   }
 
   const handleSpeakNav = () => {
@@ -196,18 +182,24 @@ export default function MorphNav({ scrolled = false, hidden = false }) {
             >
               {t('nav.career')}
             </Link>
-            <Link
-              to="/verification"
-              className={`morph-nav-item ${currentPath.startsWith('/verification') ? 'active' : ''}`}
-            >
-              {lang === 'hi' ? 'हुनर सत्यापन' : 'Verify Skill'}
-            </Link>
-            <Link
-              to="/dashboard"
-              className={`morph-nav-item ${currentPath.startsWith('/dashboard') || currentPath.startsWith('/profile') ? 'active' : ''}`}
-            >
-              {t('nav.dashboard')}
-            </Link>
+
+            {/* ONLY visible when logged in */}
+            {currentUser && (
+              <>
+                <Link
+                  to="/verification"
+                  className={`morph-nav-item ${currentPath.startsWith('/verification') ? 'active' : ''}`}
+                >
+                  {lang === 'hi' ? 'हुनर सत्यापन' : 'Verify Skill'}
+                </Link>
+                <Link
+                  to="/dashboard"
+                  className={`morph-nav-item ${currentPath.startsWith('/dashboard') || currentPath.startsWith('/profile') ? 'active' : ''}`}
+                >
+                  {t('nav.dashboard')}
+                </Link>
+              </>
+            )}
           </nav>
 
           {/* Actions: Listen button, Language Switcher, Onboard/Profile, Theme */}
@@ -248,26 +240,34 @@ export default function MorphNav({ scrolled = false, hidden = false }) {
               </button>
             </div>
 
-            {/* If completed, show user profile link. Otherwise show single Start Now action */}
+            {/* If Logged in: show user avatar details and dedicated Log Out button.
+                If Logged out: show Log In link and Start Now button (NO user details, NO log out). */}
             {currentUser ? (
-              <div className="user-profile-badge">
-                <Link to="/dashboard" className="user-avatar-btn" title={currentUser.name || 'User'}>
+              <div className="logged-in-nav-cluster">
+                <Link to="/dashboard" className="user-avatar-btn" title={currentUser.name || 'User Profile'}>
                   <DashIcon name="user" size={14} className="inline-dash-icon" />
-                  <span>{currentUser.name || (currentUser.phone ? `...${currentUser.phone.slice(-4)}` : 'Dashboard')}</span>
+                  <span>{currentUser.name || (currentUser.phone ? `+91 ${currentUser.phone}` : 'Candidate')}</span>
                 </Link>
                 <button
                   type="button"
-                  className="btn-link logout-link"
+                  className="btn-logout-nav"
                   onClick={handleLogout}
-                  title={t('nav.logout')}
+                  title={lang === 'hi' ? 'लॉगआउट करें' : 'Log Out'}
+                  aria-label="Log Out"
                 >
-                  <DashIcon name="close" size={13} />
+                  <DashIcon name="logout" size={14} />
+                  <span>{lang === 'hi' ? 'लॉगआउट' : 'Log Out'}</span>
                 </button>
               </div>
             ) : (
-              <Link to="/onboarding" className="btn-primary btn-sm nav-start-btn">
-                {lang === 'hi' ? 'शुरू करें' : 'Start Now'} →
-              </Link>
+              <div className="auth-nav-buttons">
+                <Link to="/login" className="nav-login-link">
+                  {lang === 'hi' ? 'लॉगिन' : 'Log In'}
+                </Link>
+                <Link to="/onboarding" className="btn-primary btn-sm nav-start-btn">
+                  {lang === 'hi' ? 'शुरू करें' : 'Start Now'} →
+                </Link>
+              </div>
             )}
 
             <ThemeToggle />
@@ -308,34 +308,49 @@ export default function MorphNav({ scrolled = false, hidden = false }) {
               <Link to="/career" onClick={() => setMobileMenuOpen(false)}>
                 {t('nav.career')}
               </Link>
-              <Link to="/verification" onClick={() => setMobileMenuOpen(false)}>
-                {lang === 'hi' ? 'हुनर सत्यापन' : 'Verify Skill'}
-              </Link>
-              <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>
-                {t('nav.dashboard')}
-              </Link>
+
+              {/* ONLY show user-specific links if logged in */}
+              {currentUser && (
+                <>
+                  <Link to="/verification" onClick={() => setMobileMenuOpen(false)}>
+                    {lang === 'hi' ? 'हुनर सत्यापन (Verify Skill)' : 'Verify Skill'}
+                  </Link>
+                  <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>
+                    {t('nav.dashboard')}
+                  </Link>
+                </>
+              )}
 
               {currentUser ? (
                 <div className="mobile-user-actions" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+                  <div className="mobile-user-info-banner">
+                    <DashIcon name="user" size={16} />
+                    <span>{currentUser.name || (currentUser.phone ? `+91 ${currentUser.phone}` : 'Logged In Candidate')}</span>
+                  </div>
                   <Link to="/dashboard" className="mobile-cta-link" onClick={() => setMobileMenuOpen(false)}>
                     {lang === 'hi' ? 'डैशबोर्ड खोलें →' : 'Go to Dashboard →'}
                   </Link>
                   <button
                     type="button"
-                    className="btn-ghost"
-                    style={{ padding: '10px', fontSize: '0.9rem' }}
+                    className="btn-logout-mobile"
                     onClick={() => {
                       handleLogout()
                       setMobileMenuOpen(false)
                     }}
                   >
-                    {t('nav.logout')}
+                    <DashIcon name="logout" size={15} />
+                    {lang === 'hi' ? 'लॉगआउट (Log Out)' : 'Log Out'}
                   </button>
                 </div>
               ) : (
-                <Link to="/onboarding" className="mobile-cta-link" onClick={() => setMobileMenuOpen(false)}>
-                  {lang === 'hi' ? 'शुरू करें (Start Now) →' : 'Start Now →'}
-                </Link>
+                <div className="mobile-auth-actions" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+                  <Link to="/login" className="mobile-login-link" onClick={() => setMobileMenuOpen(false)}>
+                    {lang === 'hi' ? 'लॉगिन करें (Log In)' : 'Log In'} →
+                  </Link>
+                  <Link to="/onboarding" className="mobile-cta-link" onClick={() => setMobileMenuOpen(false)}>
+                    {lang === 'hi' ? 'शुरू करें (Start Now) →' : 'Start Now →'}
+                  </Link>
+                </div>
               )}
             </div>
           </div>

@@ -32,16 +32,16 @@ export function seed() {
     `).run(
       demoUserId,
       '9876543210',
-      'Sunita Pawar (सुनीता पवार)',
+      'Verified Candidate',
       'candidate',
       'hi',
       '26-35',
       'female',
-      'Hadapsar',
-      'Pune',
-      'Maharashtra',
-      '411028',
-      'Pune'
+      '',
+      '',
+      '',
+      '',
+      ''
     )
 
     db.prepare(`
