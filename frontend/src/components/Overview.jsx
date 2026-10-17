@@ -1,8 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../i18n/LanguageContext.jsx'
 import { DashIcon } from './DashboardIcons.jsx'
 import { TradeIcon } from './TradeIcons.jsx'
+import { initScrollReveal, scrollToTarget } from '../lib.js'
 
 export default function Overview() {
   const { lang, t, speak, isSpeaking, stopSpeaking } = useLanguage()
@@ -276,9 +277,35 @@ export default function Overview() {
     }
   }, [])
 
+  useEffect(() => {
+    // Run scroll reveal immediately on mount and after a slight render delay
+    initScrollReveal()
+    const timer = setTimeout(() => {
+      initScrollReveal()
+    }, 120)
+    return () => clearTimeout(timer)
+  }, [])
+
+  const [speakingStep, setSpeakingStep] = useState(null)
+
+  useEffect(() => {
+    if (!isSpeaking) {
+      setSpeakingStep(null)
+    }
+  }, [isSpeaking])
+
+  const handleTabClick = (stepNum) => {
+    setActiveStepTab(stepNum)
+    const el = document.getElementById(`step-${stepNum}`)
+    if (el) {
+      scrollToTarget(el, { offset: -90 })
+    }
+  }
+
   const handleSpeakOverview = () => {
     if (isSpeaking) {
       stopSpeaking()
+      setSpeakingStep(null)
       return
     }
     const currentStepData = steps.find((s) => s.step === activeStepTab) || steps[0]
@@ -286,6 +313,21 @@ export default function Overview() {
       lang === 'hi'
         ? `${currentStepData.title_hi}. ${currentStepData.summary_hi} ${currentStepData.proTip_hi}`
         : `${currentStepData.title_en}. ${currentStepData.summary_en} ${currentStepData.proTip_en}`
+    setSpeakingStep(currentStepData.step)
+    speak(text)
+  }
+
+  const handleSpeakStep = (st) => {
+    if (isSpeaking && speakingStep === st.step) {
+      stopSpeaking()
+      setSpeakingStep(null)
+      return
+    }
+    const text =
+      lang === 'hi'
+        ? `${st.title_hi}. ${st.summary_hi} कार्यप्रणाली: ${st.methodology.map((m) => m.text_hi).join('. ')}. ${st.proTip_hi}`
+        : `${st.title_en}. ${st.summary_en} Methodology: ${st.methodology.map((m) => m.text_en).join('. ')}. ${st.proTip_en}`
+    setSpeakingStep(st.step)
     speak(text)
   }
 
@@ -324,13 +366,13 @@ export default function Overview() {
 
             <button
               type="button"
-              className={`btn-icon-listen ${isSpeaking ? 'active' : ''}`}
+              className={`btn-icon-listen ${isSpeaking && speakingStep === activeStepTab ? 'active' : ''}`}
               onClick={handleSpeakOverview}
               title={isSpeaking ? t('nav.stopListening') : t('nav.listen')}
             >
-              {isSpeaking ? <DashIcon name="stop" size={16} /> : <DashIcon name="speaker" size={16} />}
+              {isSpeaking && speakingStep === activeStepTab ? <DashIcon name="stop" size={16} /> : <DashIcon name="speaker" size={16} />}
               <span className="listen-btn-text">
-                {isSpeaking
+                {isSpeaking && speakingStep === activeStepTab
                   ? (lang === 'hi' ? 'आवाज रोकें' : 'Stop Audio')
                   : (lang === 'hi' ? 'मार्गदर्शिका सुनें' : 'Listen Guide')}
               </span>
@@ -345,12 +387,10 @@ export default function Overview() {
               key={st.step}
               type="button"
               className={`overview-step-tab-btn ${activeStepTab === st.step ? 'active' : ''}`}
-              onClick={() => setActiveStepTab(st.step)}
+              onClick={() => handleTabClick(st.step)}
             >
               <span className="tab-step-num">0{st.step}</span>
-              <span className="tab-step-label">
-                {lang === 'hi' ? st.badge : st.badge}
-              </span>
+              <span className="tab-step-label">{st.badge}</span>
             </button>
           ))}
         </div>
@@ -358,7 +398,7 @@ export default function Overview() {
 
       {/* Step by Step Detailed Methodology Section */}
       <section className="overview-steps-display-list">
-        {steps.map((st, idx) => (
+        {steps.map((st) => (
           <article
             key={st.step}
             id={`step-${st.step}`}
@@ -373,6 +413,18 @@ export default function Overview() {
                   {lang === 'hi' ? `चरण 0${st.step}` : `STEP 0${st.step}`}
                 </span>
                 <span className="step-domain-tag">{st.badge}</span>
+
+                {/* Per-step voice narration button */}
+                <button
+                  type="button"
+                  className={`btn-step-listen-pill ${speakingStep === st.step ? 'speaking' : ''}`}
+                  onClick={() => handleSpeakStep(st)}
+                  title={speakingStep === st.step ? t('nav.stopListening') : (lang === 'hi' ? 'इस चरण को सुनें' : 'Listen to this step')}
+                  aria-label={speakingStep === st.step ? 'Stop audio' : 'Listen to step'}
+                >
+                  <DashIcon name={speakingStep === st.step ? 'stop' : 'speaker'} size={13} />
+                  <span>{speakingStep === st.step ? (lang === 'hi' ? 'रोकें' : 'Stop') : (lang === 'hi' ? 'बोलकर सुनें' : 'Listen')}</span>
+                </button>
               </div>
 
               <h2 className="step-card-title">
@@ -459,6 +511,7 @@ export default function Overview() {
           </article>
         ))}
       </section>
+
 
       {/* Bottom Interactive CTA Banner */}
       <section className="overview-bottom-cta-banner container-interactive-card reveal-on-scroll">

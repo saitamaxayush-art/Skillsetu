@@ -4817,6 +4817,34 @@ button:active,
   letter-spacing: 0.03em;
 }
 
+.btn-step-listen-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  padding: 4px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-step-listen-pill:hover {
+  background: var(--surface);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-step-listen-pill.speaking {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+}
+
 .step-card-title {
   font-size: 1.45rem;
   font-weight: 800;
