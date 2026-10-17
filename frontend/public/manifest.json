@@ -1,0 +1,16 @@
+{
+  "short_name": "SkillSetu",
+  "name": "SkillSetu (स्किलसेतु) - हुनर से मंज़िल तक",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#f6f1e7",
+  "theme_color": "#b54610",
+  "display": "standalone",
+  "orientation": "portrait"
+}
