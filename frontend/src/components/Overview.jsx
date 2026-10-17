@@ -360,7 +360,7 @@ export default function Overview() {
               </Link>
             ) : (
               <Link to="/onboarding" className="action-btn-primary nav-start-btn">
-                {lang === 'hi' ? 'अभी शुरू करें (Start Now) →' : 'Start Now (Get Matched) →'}
+                {lang === 'hi' ? 'शुरू करें / लॉगिन (Start Now / Log In) →' : 'Start Now / Log In →'}
               </Link>
             )}
 
@@ -537,7 +537,7 @@ export default function Overview() {
               </Link>
             ) : (
               <Link to="/onboarding" className="action-btn-primary cta-btn-large">
-                {lang === 'hi' ? 'अभी शुरू करें (Start Now) →' : 'Start Assessment Now →'}
+                {lang === 'hi' ? 'शुरू करें / लॉगिन (Start Now / Log In) →' : 'Start Now / Log In →'}
               </Link>
             )}
             <Link to="/opportunities" className="btn-secondary cta-btn-large">

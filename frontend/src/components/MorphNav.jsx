@@ -261,11 +261,8 @@ export default function MorphNav({ scrolled = false, hidden = false }) {
               </div>
             ) : (
               <div className="auth-nav-buttons">
-                <Link to="/login" className="nav-login-link">
-                  {lang === 'hi' ? 'लॉगिन' : 'Log In'}
-                </Link>
                 <Link to="/onboarding" className="btn-primary btn-sm nav-start-btn">
-                  {lang === 'hi' ? 'शुरू करें' : 'Start Now'} →
+                  {lang === 'hi' ? 'शुरू करें / लॉगिन' : 'Start Now / Log In'} →
                 </Link>
               </div>
             )}
@@ -344,11 +341,8 @@ export default function MorphNav({ scrolled = false, hidden = false }) {
                 </div>
               ) : (
                 <div className="mobile-auth-actions" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
-                  <Link to="/login" className="mobile-login-link" onClick={() => setMobileMenuOpen(false)}>
-                    {lang === 'hi' ? 'लॉगिन करें (Log In)' : 'Log In'} →
-                  </Link>
                   <Link to="/onboarding" className="mobile-cta-link" onClick={() => setMobileMenuOpen(false)}>
-                    {lang === 'hi' ? 'शुरू करें (Start Now) →' : 'Start Now →'}
+                    {lang === 'hi' ? 'शुरू करें / लॉगिन (Start Now / Log In) →' : 'Start Now / Log In →'}
                   </Link>
                 </div>
               )}

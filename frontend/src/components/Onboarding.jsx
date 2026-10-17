@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { apiEvaluateQuiz, apiGetProfile, apiGetQuestions, apiSaveProfile, apiSaveStep } from '../api.js'
+import { apiEvaluateQuiz, apiGetProfile, apiGetQuestions, apiSaveProfile, apiSaveStep, apiSendOtp, apiVerifyOtp } from '../api.js'
 import { useLanguage } from '../i18n/LanguageContext.jsx'
 import { GoalIcon, TradeIcon } from './TradeIcons.jsx'
 import { DashIcon } from './DashboardIcons.jsx'
@@ -37,6 +37,7 @@ export default function Onboarding() {
       language: lang || 'hi',
       user: {
         name: '',
+        phone: '',
         age_range: '26-35',
         gender: '',
         village_town: '',
@@ -89,6 +90,87 @@ export default function Onboarding() {
   const [skillSearch, setSkillSearch] = useState('')
   const [isListeningMic, setIsListeningMic] = useState(false)
 
+  // Mobile & OTP state for Step 2
+  const [phoneVerified, setPhoneVerified] = useState(() => {
+    try {
+      const userStr = localStorage.getItem('skillsetu-user')
+      if (userStr) {
+        const u = JSON.parse(userStr)
+        if (u?.phone) return true
+      }
+    } catch (_) {}
+    return false
+  })
+  const [otpSent, setOtpSent] = useState(false)
+  const [otpCode, setOtpCode] = useState('')
+  const [otpSending, setOtpSending] = useState(false)
+  const [otpVerifying, setOtpVerifying] = useState(false)
+  const [otpError, setOtpError] = useState('')
+  const [otpSuccessMessage, setOtpSuccessMessage] = useState('')
+  const [stepError, setStepError] = useState('')
+
+  const handleSendOtp = async () => {
+    const rawPhone = (formData.user.phone || '').replace(/\D/g, '')
+    if (rawPhone.length < 10) {
+      setOtpError(lang === 'hi' ? 'कृपया 10 अंकों का वैध मोबाइल नंबर दर्ज करें।' : 'Please enter a valid 10-digit mobile number.')
+      return
+    }
+    setOtpSending(true)
+    setOtpError('')
+    setOtpSuccessMessage('')
+    try {
+      const res = await apiSendOtp(rawPhone)
+      setOtpSent(true)
+      setOtpSuccessMessage(
+        res?.message ||
+          (lang === 'hi'
+            ? `ओटीपी ${rawPhone} पर भेजा गया! (डेमो कोड: 123456)`
+            : `OTP sent to ${rawPhone}! (Demo code: 123456)`)
+      )
+    } catch (err) {
+      setOtpError(err?.message || (lang === 'hi' ? 'ओटीपी भेजने में विफलता। पुनः प्रयास करें।' : 'Failed to send OTP. Please try again.'))
+    } finally {
+      setOtpSending(false)
+    }
+  }
+
+  const handleVerifyOtp = async () => {
+    const rawPhone = (formData.user.phone || '').replace(/\D/g, '')
+    const cleanOtp = (otpCode || '').trim()
+    if (cleanOtp.length < 4) {
+      setOtpError(lang === 'hi' ? 'कृपया सही ओटीपी दर्ज करें।' : 'Please enter the OTP.')
+      return
+    }
+    setOtpVerifying(true)
+    setOtpError('')
+    try {
+      const res = await apiVerifyOtp(rawPhone, cleanOtp, lang)
+      if (res?.token) {
+        localStorage.setItem('skillsetu-token', res.token)
+        const updatedUser = {
+          ...(res.user || {}),
+          name: formData.user.name || res.user?.name || 'SkillSetu User',
+          phone: rawPhone,
+        }
+        localStorage.setItem('skillsetu-user', JSON.stringify(updatedUser))
+        window.dispatchEvent(new Event('auth-change'))
+        setPhoneVerified(true)
+        setOtpSuccessMessage(
+          lang === 'hi'
+            ? '✓ मोबाइल नंबर सफलतापूर्वक सत्यापित हुआ!'
+            : '✓ Mobile number successfully verified!'
+        )
+        setStepError('')
+      } else {
+        setOtpError(lang === 'hi' ? 'ओटीपी अमान्य है।' : 'Invalid OTP code.')
+      }
+    } catch (err) {
+      setOtpError(err?.message || (lang === 'hi' ? 'ओटीपी सत्यापन विफल हुआ।' : 'Failed to verify OTP.'))
+    } finally {
+      setOtpVerifying(false)
+    }
+  }
+
   // Auto-save locally and optionally to backend
   useEffect(() => {
     try {
@@ -121,7 +203,10 @@ export default function Onboarding() {
 
     apiGetProfile()
       .then((res) => {
-        if (res?.authenticated && res?.user?.name) {
+        if (res?.authenticated && res?.user) {
+          if (res.user.phone) {
+            setPhoneVerified(true)
+          }
           setFormData((prev) => ({
             ...prev,
             user: { ...prev.user, ...res.user },
@@ -193,6 +278,34 @@ export default function Onboarding() {
   }
 
   const handleNext = () => {
+    // Step 2 Validation: Candidate Name, Mobile Number and OTP verification
+    if (step === 2) {
+      if (!formData.user.name?.trim()) {
+        setStepError(lang === 'hi' ? 'कृपया अपना पूरा नाम दर्ज करें।' : 'Please enter your full name.')
+        return
+      }
+      const rawPhone = (formData.user.phone || '').replace(/\D/g, '')
+      if (rawPhone.length < 10) {
+        setStepError(lang === 'hi' ? 'कृपया 10 अंकों का वैध मोबाइल नंबर दर्ज करें।' : 'Please enter a valid 10-digit mobile number.')
+        return
+      }
+      if (!phoneVerified) {
+        setStepError(
+          lang === 'hi'
+            ? 'कृपया ओटीपी जनरेट करें और आगे बढ़ने से पहले मोबाइल नंबर सत्यापित करें।'
+            : 'Please generate OTP and verify your mobile number before proceeding.'
+        )
+        return
+      }
+      if (!formData.user.village_town?.trim()) {
+        setStepError(lang === 'hi' ? 'कृपया अपना गांव या कस्बा दर्ज करें।' : 'Please enter your village or town.')
+        return
+      }
+      setStepError('')
+    } else {
+      setStepError('')
+    }
+
     // Autosave current step data to backend
     apiSaveStep(step, {
       user: formData.user,
@@ -434,11 +547,18 @@ export default function Onboarding() {
           </section>
         )}
 
-        {/* ================= STEP 2: BASIC DETAILS ================= */}
+        {/* ================= STEP 2: BASIC DETAILS & MOBILE OTP ================= */}
         {step === 2 && (
           <section className="wizard-screen">
             <h2 className="screen-title" tabIndex={-1} ref={stepHeadingRef}>{t('onboarding.basicTitle')}</h2>
             <p className="screen-sub">{t('onboarding.basicSubtitle')}</p>
+
+            {stepError && (
+              <div className="step-validation-banner" role="alert">
+                <DashIcon name="alert" size={18} />
+                <span>{stepError}</span>
+              </div>
+            )}
 
             <div className="form-grid-2">
               <label className="input-group full-width">
@@ -448,15 +568,129 @@ export default function Onboarding() {
                   className="base-input"
                   placeholder={t('onboarding.namePlaceholder')}
                   value={formData.user.name}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    setStepError('')
                     setFormData((p) => ({
                       ...p,
                       user: { ...p.user, name: e.target.value },
                     }))
-                  }
+                  }}
                   required
                 />
               </label>
+
+              {/* Mobile Number & OTP Verification Card */}
+              <div className="mobile-otp-card full-width">
+                <div className="mobile-otp-header">
+                  <div className="mobile-otp-title-wrap">
+                    <DashIcon name="phone" size={18} className="otp-icon" />
+                    <strong>{lang === 'hi' ? 'मोबाइल नंबर और ओटीपी सत्यापन' : 'Mobile Number & OTP Verification'} *</strong>
+                  </div>
+                  {phoneVerified && (
+                    <span className="badge-verified-inline">
+                      <DashIcon name="check" size={14} /> {lang === 'hi' ? 'मोबाइल सत्यापित' : 'Mobile Verified'}
+                    </span>
+                  )}
+                </div>
+
+                <div className="mobile-input-row">
+                  <div className="phone-prefix-wrap">
+                    <span className="phone-prefix">+91</span>
+                    <input
+                      type="tel"
+                      className="base-input phone-input"
+                      placeholder="9876543210"
+                      maxLength={10}
+                      value={formData.user.phone || ''}
+                      disabled={phoneVerified}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 10)
+                        setStepError('')
+                        setOtpError('')
+                        setFormData((p) => ({
+                          ...p,
+                          user: { ...p.user, phone: val },
+                        }))
+                      }}
+                    />
+                  </div>
+
+                  {!phoneVerified ? (
+                    <button
+                      type="button"
+                      className="btn-otp-action"
+                      onClick={handleSendOtp}
+                      disabled={otpSending || (formData.user.phone || '').length < 10}
+                    >
+                      {otpSending
+                        ? (lang === 'hi' ? 'भेजा जा रहा है...' : 'Sending...')
+                        : otpSent
+                        ? (lang === 'hi' ? 'ओटीपी पुनः भेजें (Resend)' : 'Resend OTP')
+                        : (lang === 'hi' ? 'ओटीपी जनरेट करें (Generate OTP)' : 'Generate OTP')}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn-change-number"
+                      onClick={() => {
+                        setPhoneVerified(false)
+                        setOtpSent(false)
+                        setOtpCode('')
+                        setOtpSuccessMessage('')
+                      }}
+                    >
+                      {lang === 'hi' ? 'नंबर बदलें' : 'Change Number'}
+                    </button>
+                  )}
+                </div>
+
+                {otpSuccessMessage && (
+                  <p className="otp-helper-msg success">
+                    {otpSuccessMessage}
+                  </p>
+                )}
+
+                {otpError && (
+                  <p className="otp-helper-msg error" role="alert">
+                    ⚠️ {otpError}
+                  </p>
+                )}
+
+                {/* If OTP generated and not yet verified: show 6-digit verification code entry */}
+                {otpSent && !phoneVerified && (
+                  <div className="otp-verification-panel">
+                    <label className="otp-code-label">
+                      <span>{lang === 'hi' ? 'प्राप्त 6 अंकों का ओटीपी दर्ज करें:' : 'Enter 6-digit OTP code:'}</span>
+                      <div className="otp-verify-row">
+                        <input
+                          type="tel"
+                          maxLength={6}
+                          placeholder="123456"
+                          className="base-input otp-code-input"
+                          value={otpCode}
+                          onChange={(e) => {
+                            setOtpError('')
+                            setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="btn-verify-otp-submit"
+                          onClick={handleVerifyOtp}
+                          disabled={otpVerifying || otpCode.length < 4}
+                        >
+                          {otpVerifying
+                            ? (lang === 'hi' ? 'सत्यापित हो रहा है...' : 'Verifying...')
+                            : (lang === 'hi' ? 'सत्यापित करें (Verify OTP)' : 'Verify OTP')}
+                        </button>
+                      </div>
+                    </label>
+                    <span className="otp-demo-hint">
+                      {lang === 'hi' ? 'डेमो ओटीपी कोड: 123456' : 'Demo OTP code: 123456'}
+                    </span>
+                  </div>
+                )}
+              </div>
 
               <label className="input-group">
                 <span>{t('onboarding.ageRange')}</span>
@@ -1089,17 +1323,25 @@ export default function Onboarding() {
 
       {/* Bottom Sticky Action Bar */}
       <footer className="wizard-bottom-bar">
-        {step > 1 ? (
-          <button type="button" className="btn-secondary" onClick={handleBack}>
-            ← {t('onboarding.back')}
-          </button>
-        ) : (
-          <div />
+        {stepError && (
+          <div className="bottom-bar-error-hint" role="alert">
+            <DashIcon name="alert" size={15} />
+            <span>{stepError}</span>
+          </div>
         )}
+        <div className="wizard-bottom-bar-inner">
+          {step > 1 ? (
+            <button type="button" className="btn-secondary" onClick={handleBack}>
+              ← {t('onboarding.back')}
+            </button>
+          ) : (
+            <div />
+          )}
 
-        <button type="button" className="btn-primary" onClick={handleNext}>
-          {step === 7 ? t('onboarding.save') : t('onboarding.next')} →
-        </button>
+          <button type="button" className="btn-primary" onClick={handleNext}>
+            {step === 7 ? t('onboarding.save') : t('onboarding.next')} →
+          </button>
+        </div>
       </footer>
     </main>
   )

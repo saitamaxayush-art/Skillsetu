@@ -244,7 +244,7 @@ export default function Home() {
                 </>
               ) : (
                 <Link to="/onboarding" className="action-btn-primary hero-compulsory-start">
-                  {lang === 'hi' ? 'शुरू करें (Start Now) →' : 'Start Now →'}
+                  {lang === 'hi' ? 'शुरू करें / लॉगिन (Start Now / Log In) →' : 'Start Now / Log In →'}
                 </Link>
               )}
 
